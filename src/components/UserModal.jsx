@@ -4,10 +4,10 @@ export default function UserModal({ onCancel, onCreate }) {
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'dev' })
   const [error, setError] = useState('')
   const update = (event) => setForm({ ...form, [event.target.name]: event.target.value })
-  function submit(event) {
+  async function submit(event) {
     event.preventDefault()
     if (!form.name || !form.email || !form.password) return setError('Completa todos los campos')
-    try { onCreate(form) } catch (error) { setError(error.message) }
+    try { await onCreate(form) } catch (error) { setError(error.message) }
   }
   return <div className="modal-backdrop">
     <form className="modal" onSubmit={submit}>

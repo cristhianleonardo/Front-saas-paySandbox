@@ -1,17 +1,38 @@
-import { companies, seedUsers } from './mockData'
+import { API_BASE_URL } from '../lib/constants'
 import { readStorage, writeStorage } from './storage'
 
-const USERS_KEY = 'paysandbox-users'
 const SESSION_KEY = 'paysandbox-session'
 
-const users = () => readStorage(USERS_KEY, seedUsers)
-
 export async function login(email, password) {
-  const user = users().find((item) => item.email.toLowerCase() === email.trim().toLowerCase() && item.password === password && item.active)
-  if (!user) throw new Error('Credenciales inválidas')
-  const company = companies.find((item) => item.id === user.companyId)
-  // LIMITACIÓN CONOCIDA: el token y la sesión viven en localStorage, y las contraseñas son datos de prueba; FastAPI deberá usar autenticación real.
-  const session = { token: `mock-token-${user.id}`, user: { ...user, password: undefined }, company }
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ usuario: email, password }),
+  })
+
+  const payload = await response.json().catch(() => null)
+  if (!response.ok) throw new Error(payload?.message || 'Credenciales inválidas')
+
+  const backendUser = payload.user
+  const user = {
+    id: backendUser.id,
+    name: backendUser.nombre,
+    email,
+    companyId: String(backendUser.cliente_id),
+    role: backendUser.rol,
+    active: true,
+  }
+  const company = {
+    id: String(backendUser.cliente_id),
+    name: backendUser.cliente_nombre,
+  }
+  const session = {
+    token: payload.access_token,
+    tokenType: payload.token_type,
+    expiresAt: Date.now() + payload.expires_in * 1000,
+    user,
+    company,
+  }
   writeStorage(SESSION_KEY, session)
   return session
 }
